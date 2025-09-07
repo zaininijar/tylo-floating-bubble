@@ -21,6 +21,7 @@ import expo.modules.core.interfaces.services.EventEmitter;
 public class FloatingBubbleService extends Service {
     private WindowManager windowManager;
     private View floatingView;
+    private View deleteAreaView;
     private boolean isExpanded = false;
     private EventEmitter eventEmitter;
     
@@ -251,6 +252,12 @@ public class FloatingBubbleService extends Service {
                             params.y = Math.max(0, Math.min(params.y, screenHeight - 100));
                             
                             windowManager.updateViewLayout(floatingView, params);
+                            
+                            // Show delete area when dragging
+                            showDeleteArea();
+                            
+                            // Check if bubble is in delete area
+                            checkDeleteArea(params);
                         }
                         return true;
                         
@@ -259,9 +266,17 @@ public class FloatingBubbleService extends Service {
                             // Quick tap - add bubble click animation then show popup
                             animateBubbleClick();
                         } else {
-                            // Snap to edge
-                            snapToEdge(params);
+                            // Check if bubble should be deleted
+                            if (isInDeleteArea(params)) {
+                                deleteBubble();
+                            } else {
+                                // Snap to edge
+                                snapToEdge(params);
+                            }
                         }
+                        
+                        // Hide delete area
+                        hideDeleteArea();
                         return true;
                         
                     default:
@@ -270,13 +285,16 @@ public class FloatingBubbleService extends Service {
             }
         });
         
-        try {
-            windowManager.addView(floatingView, params);
-            android.util.Log.d("FloatingBubble", "Bubble added successfully to window manager");
-        } catch (Exception e) {
-            android.util.Log.e("FloatingBubble", "Failed to add bubble to window manager: " + e.getMessage());
-            e.printStackTrace();
-        }
+               try {
+                   windowManager.addView(floatingView, params);
+                   android.util.Log.d("FloatingBubble", "Bubble added successfully to window manager");
+                   
+                   // Create delete area
+                   createDeleteArea();
+               } catch (Exception e) {
+                   android.util.Log.e("FloatingBubble", "Failed to add bubble to window manager: " + e.getMessage());
+                   e.printStackTrace();
+               }
     }
     
     private void snapToEdge(WindowManager.LayoutParams params) {
@@ -362,6 +380,265 @@ public class FloatingBubbleService extends Service {
         }
     }
     
+    private void createDeleteArea() {
+        try {
+            if (deleteAreaView != null) {
+                return; // Already exists
+            }
+
+            // Get screen dimensions
+            android.util.DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+            int screenWidth = displayMetrics.widthPixels;
+            int screenHeight = displayMetrics.heightPixels;
+
+            // Create circular delete area layout
+            android.widget.RelativeLayout deleteAreaLayout = new android.widget.RelativeLayout(this);
+            
+            // Create circular background
+            android.graphics.drawable.GradientDrawable circularDrawable = new android.graphics.drawable.GradientDrawable();
+            circularDrawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            circularDrawable.setColor(android.graphics.Color.parseColor("#FF4444"));
+            deleteAreaLayout.setBackground(circularDrawable);
+
+            // Create simple X icon
+            android.widget.TextView deleteIcon = new android.widget.TextView(this);
+            deleteIcon.setText("✕");
+            deleteIcon.setTextSize(30);
+            deleteIcon.setTextColor(android.graphics.Color.WHITE);
+            deleteIcon.setGravity(android.view.Gravity.CENTER);
+            deleteIcon.setTypeface(null, android.graphics.Typeface.BOLD);
+
+            // Add icon to delete area
+            android.widget.RelativeLayout.LayoutParams contentParams = new android.widget.RelativeLayout.LayoutParams(
+                android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT
+            );
+            contentParams.addRule(android.widget.RelativeLayout.CENTER_IN_PARENT);
+            deleteAreaLayout.addView(deleteIcon, contentParams);
+
+            deleteAreaView = deleteAreaLayout;
+
+            // Set up window parameters for delete area
+            int layoutFlag = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                ? android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                : android.view.WindowManager.LayoutParams.TYPE_PHONE;
+
+            android.view.WindowManager.LayoutParams deleteParams = new android.view.WindowManager.LayoutParams(
+                160, // Larger circular area
+                160, // Larger circular area
+                layoutFlag,
+                android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                android.graphics.PixelFormat.TRANSLUCENT
+            );
+
+            deleteParams.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
+            deleteParams.y = 50; // Position slightly above bottom
+
+            // Initially hidden
+            deleteAreaView.setAlpha(0f);
+            deleteAreaView.setVisibility(android.view.View.GONE);
+
+            // Add to window manager
+            windowManager.addView(deleteAreaView, deleteParams);
+            
+            android.util.Log.d("FloatingBubble", "Delete area created successfully");
+
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to create delete area: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void showDeleteArea() {
+        try {
+            if (deleteAreaView != null) {
+                deleteAreaView.setVisibility(android.view.View.VISIBLE);
+                deleteAreaView.setAlpha(1f); // Show immediately without animation
+                android.util.Log.d("FloatingBubble", "Delete area shown");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to show delete area: " + e.getMessage());
+        }
+    }
+
+    private void hideDeleteArea() {
+        try {
+            if (deleteAreaView != null) {
+                deleteAreaView.setAlpha(0f); // Hide immediately without animation
+                deleteAreaView.setVisibility(android.view.View.GONE);
+                android.util.Log.d("FloatingBubble", "Delete area hidden");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to hide delete area: " + e.getMessage());
+        }
+    }
+
+    private boolean wasInDeleteArea = false;
+    
+    private void checkDeleteArea(android.view.WindowManager.LayoutParams params) {
+        try {
+            boolean currentlyInDeleteArea = isInDeleteArea(params);
+            
+            if (currentlyInDeleteArea) {
+                // Trigger haptic feedback when entering delete area
+                if (!wasInDeleteArea) {
+                    triggerHapticFeedback();
+                    wasInDeleteArea = true;
+                }
+                
+                // Simple visual feedback - add red border
+                if (floatingView != null) {
+                    // Create border drawable
+                    android.graphics.drawable.GradientDrawable borderDrawable = new android.graphics.drawable.GradientDrawable();
+                    borderDrawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                    borderDrawable.setColor(android.graphics.Color.TRANSPARENT);
+                    borderDrawable.setStroke(8, android.graphics.Color.parseColor("#FF4444")); // 8px red border
+                    floatingView.setBackground(borderDrawable);
+                }
+            } else {
+                // Reset bubble when leaving delete area
+                if (wasInDeleteArea) {
+                    resetBubbleAppearance();
+                    wasInDeleteArea = false;
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to check delete area: " + e.getMessage());
+        }
+    }
+    
+    private void triggerHapticFeedback() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                android.os.VibrationEffect vibrationEffect = android.os.VibrationEffect.createOneShot(100, android.os.VibrationEffect.DEFAULT_AMPLITUDE);
+                android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(vibrationEffect);
+                }
+            } else {
+                android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(100);
+                }
+            }
+            android.util.Log.d("FloatingBubble", "Haptic feedback triggered");
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to trigger haptic feedback: " + e.getMessage());
+        }
+    }
+    
+    
+    private void resetBubbleAppearance() {
+        try {
+            if (floatingView != null) {
+                // Reset bubble appearance - remove border
+                floatingView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to reset bubble appearance: " + e.getMessage());
+        }
+    }
+
+    private boolean isInDeleteArea(android.view.WindowManager.LayoutParams params) {
+        try {
+            if (deleteAreaView == null) {
+                return false;
+            }
+
+            android.util.DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+            int screenWidth = displayMetrics.widthPixels;
+            int screenHeight = displayMetrics.heightPixels;
+            
+            // Delete area is circular, positioned at bottom center
+            int deleteAreaRadius = 80; // Half of the circular area (160/2)
+            int deleteAreaCenterX = screenWidth / 2;
+            int deleteAreaCenterY = screenHeight - deleteAreaRadius - 50; // Center of delete area
+            
+            // Calculate distance from bubble center to delete area center
+            int bubbleCenterX = params.x + 50; // Bubble center (assuming 100px bubble)
+            int bubbleCenterY = params.y + 50;
+            
+            float distance = (float) Math.sqrt(
+                Math.pow(bubbleCenterX - deleteAreaCenterX, 2) + 
+                Math.pow(bubbleCenterY - deleteAreaCenterY, 2)
+            );
+            
+            // Check if bubble is within the circular delete area
+            return distance <= deleteAreaRadius;
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to check if in delete area: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void deleteBubble() {
+        try {
+            android.util.Log.d("FloatingBubble", "Deleting bubble...");
+            
+            // Trigger strong haptic feedback for deletion
+            triggerStrongHapticFeedback();
+            
+            // Simple deletion animation
+            if (floatingView != null) {
+                floatingView.animate()
+                    .scaleX(0f)
+                    .scaleY(0f)
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                // Remove bubble from window manager
+                                if (floatingView != null) {
+                                    windowManager.removeView(floatingView);
+                                    floatingView = null;
+                                }
+                                
+                                // Remove delete area
+                                if (deleteAreaView != null) {
+                                    windowManager.removeView(deleteAreaView);
+                                    deleteAreaView = null;
+                                }
+                                
+                                // Stop service
+                                stopSelf();
+                                
+                                android.util.Log.d("FloatingBubble", "Bubble deleted successfully");
+                            } catch (Exception e) {
+                                android.util.Log.e("FloatingBubble", "Failed to remove views: " + e.getMessage());
+                            }
+                        }
+                    })
+                    .start();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to delete bubble: " + e.getMessage());
+        }
+    }
+    
+    private void triggerStrongHapticFeedback() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                // Strong haptic feedback for deletion
+                android.os.VibrationEffect vibrationEffect = android.os.VibrationEffect.createOneShot(200, 255);
+                android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(vibrationEffect);
+                }
+            } else {
+                android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(200);
+                }
+            }
+            android.util.Log.d("FloatingBubble", "Strong haptic feedback triggered for deletion");
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to trigger strong haptic feedback: " + e.getMessage());
+        }
+    }
+
     private void animateBubbleClick() {
         try {
             // Animate bubble scale down and up
@@ -870,8 +1147,18 @@ public class FloatingBubbleService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (floatingView != null) {
-            windowManager.removeView(floatingView);
+        try {
+            if (floatingView != null) {
+                windowManager.removeView(floatingView);
+                floatingView = null;
+            }
+            if (deleteAreaView != null) {
+                windowManager.removeView(deleteAreaView);
+                deleteAreaView = null;
+            }
+            android.util.Log.d("FloatingBubble", "Service destroyed and views cleaned up");
+        } catch (Exception e) {
+            android.util.Log.e("FloatingBubble", "Failed to clean up views: " + e.getMessage());
         }
     }
 }
