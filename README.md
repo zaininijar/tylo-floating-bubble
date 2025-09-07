@@ -7,6 +7,7 @@ A React Native floating bubble component with native Android overlay popup for E
 - 🎈 **Floating Bubble**: Draggable floating bubble with snap-to-edge functionality
 - 🎨 **Modern UI**: Beautiful popup with animations and modern design
 - 📱 **Native Android**: Built with native Android overlay for smooth performance
+- 🗑️ **Delete Area**: Circular delete area with haptic feedback and visual effects
 - ⚡ **Expo Compatible**: Works with Expo SDK 49+
 - 🎯 **Customizable**: Dynamic content and styling options
 - 🔄 **Smooth Animations**: Spring animations and smooth transitions
@@ -94,6 +95,7 @@ const isVisible = await FloatingBubbleHelper.isVisible();
 Shows the floating bubble with the specified options.
 
 **Options:**
+
 - `title?: string` - Bubble title
 - `subtitle?: string` - Bubble subtitle
 - `showBadge?: boolean` - Show badge on bubble
@@ -135,11 +137,13 @@ The library requires the following permission in your `AndroidManifest.xml`:
 ## Features
 
 ### 🎈 Floating Bubble
+
 - Draggable bubble that snaps to screen edges
 - Customizable badge with count
 - Smooth animations and transitions
 
 ### 🎨 Popup Design
+
 - Modern UI with rounded corners and shadows
 - Green price card with white text
 - Location dots (green for pickup, red for destination)
@@ -147,10 +151,19 @@ The library requires the following permission in your `AndroidManifest.xml`:
 - Accept/Reject buttons with animations
 
 ### ⚡ Animations
+
 - Spring animation for popup appearance
 - Scale animation for button presses
 - Smooth fade out when closing
 - Bubble click feedback animation
+
+### 🗑️ Delete Area
+
+- Circular delete area appears when dragging bubble
+- Haptic feedback when entering delete area
+- Red border effect on bubble when in delete zone
+- Instant show/hide without animation delays
+- Smooth deletion animation with scale and fade
 
 ## Requirements
 

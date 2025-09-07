@@ -1,6 +1,6 @@
 {
   "name": "tylo-floating-bubble",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A React Native floating bubble component with native Android overlay popup for Expo SDK 49+",
   "main": "build/index.js",
   "types": "build/index.d.ts",
