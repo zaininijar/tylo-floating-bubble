@@ -1,7 +1,7 @@
 {
   "name": "tylo-floating-bubble",
-  "version": "0.1.1",
-  "description": "Module for Tylo Floating Bubbble",
+  "version": "1.0.0",
+  "description": "A React Native floating bubble component with native Android overlay popup for Expo SDK 49+",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "react-native": "build/index.js",
@@ -29,8 +29,14 @@
   "keywords": [
     "react-native",
     "expo",
-    "tylo-floating-bubble",
-    "TyloFloatingBubble"
+    "floating-bubble",
+    "overlay",
+    "popup",
+    "android",
+    "native-module",
+    "expo-sdk-49",
+    "tylo",
+    "floating-widget"
   ],
   "repository": "https://github.com/zaininijar/tylo-floating-bubble",
   "bugs": {
