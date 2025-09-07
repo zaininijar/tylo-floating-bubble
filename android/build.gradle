@@ -1,0 +1,48 @@
+// Helper untuk safe SDK version
+buildscript {
+    ext.safeExtGet = { prop, fallback ->
+        rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+    }
+}
+
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.tylofloatingbubble'
+version = '0.1.0'
+
+// Ambil expo-modules-core
+def expoModulesCoreProject = findProject(':expo-modules-core')
+def expoModulesCoreDir = expoModulesCoreProject != null
+        ? expoModulesCoreProject.projectDir
+        : new File(rootDir, "../node_modules/expo-modules-core")
+
+apply from: new File(expoModulesCoreDir, "ExpoModulesCorePlugin.gradle")
+// applyKotlinExpoModulesCorePlugin() // Disabled for Java only
+
+android {
+    namespace "expo.modules.tylofloatingbubble"
+    compileSdkVersion safeExtGet("compileSdkVersion", 33)
+
+    defaultConfig {
+        minSdkVersion safeExtGet("minSdkVersion", 21)
+        targetSdkVersion safeExtGet("targetSdkVersion", 33)
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation project(':expo-modules-core')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "com.facebook.react:react-native:+"
+}

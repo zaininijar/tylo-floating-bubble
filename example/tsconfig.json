@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "tylo-floating-bubble": ["../src/index"],
+      "tylo-floating-bubble/*": ["../src/*"]
+    }
+  }
+}
